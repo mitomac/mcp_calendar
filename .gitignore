@@ -1,30 +1,14 @@
-# Create a .gitignore file
-echo "# Python virtual environments
+# Python virtual environments
 venv/
 env/
 .venv/
 ENV/
-
-# Python bytecode
 __pycache__/
 *.py[cod]
 *$py.class
-
-# Distribution / packaging
 dist/
 build/
 *.egg-info/
-
-# Local development settings
 .env
-.env.local
-
-# IDE settings
-.vscode/
 .idea/
-*.swp
-*.swo" > .gitignore
-
-# Add the .gitignore file
-git add .gitignore
-git commit -m "Add .gitignore file"
+.vscode/
