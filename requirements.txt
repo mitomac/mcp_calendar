@@ -1,0 +1,25 @@
+# Duke Calendar MCP Server Dependencies
+
+# API Framework
+fastapi>=0.104.1
+
+# ASGI Server
+uvicorn>=0.24.0
+gunicorn>=21.2.0
+
+# HTTP Client
+httpx>=0.25.1
+
+# Data Validation
+pydantic>=2.4.2
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Utility
+python-dateutil>=2.8.2
+
+# Development Tools
+pytest>=7.4.3
+black>=23.11.0
+isort>=5.12.0
