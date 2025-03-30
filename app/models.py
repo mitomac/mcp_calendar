@@ -17,6 +17,7 @@ class EventContact(BaseModel):
 
 class EventData(BaseModel):
     id: str
+    local_id: Optional[int] = None
     start_timestamp: str
     end_timestamp: Optional[str] = None
     summary: Optional[str] = None
@@ -34,32 +35,25 @@ class EventData(BaseModel):
         extra = "allow"
 
 
-class CalendarQuery(BaseModel):
-    query: str
-    time_range: str = "today"
-    groups: Optional[List[str]] = None
+
+class SimplifiedEvent(BaseModel):
+    local_id: int
+    title: Optional[str] = None
+    groups: Optional[str] = None
     categories: Optional[List[str]] = None
+    description: Optional[str] = None
+    start_time: Optional[str] = None
+
+class SimplifiedEventsResponse(BaseModel):
+    events: List[SimplifiedEvent]
+    count: int
+    date_range: Dict[str, str]
 
 
-class CalendarResponse(BaseModel):
+class EventsByLocalIdsRequest(BaseModel):
+    local_ids: List[int]
+
+
+class EventsByLocalIdsResponse(BaseModel):
     events: List[EventData]
-    message: str
-    debug_info: Optional[Dict[str, Any]] = None
-
-
-class ReferenceData(BaseModel):
-    data: List[str]
-
-
-class EventsByIdsRequest(BaseModel):
-    ids: List[str]
-
-
-class EventsByIdsResponse(BaseModel):
-    events: List[EventData]
-
-
-class FiltersWithIdsResponse(BaseModel):
-    categories: Dict[str, List[str]]
-    groups: Dict[str, List[str]]
-
+    count: int
