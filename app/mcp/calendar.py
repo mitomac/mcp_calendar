@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, date
 from typing import List, Dict, Optional
 import httpx
 from app.config import settings
-from app.models import EventData, SimplifiedEvent
+from app.models.calendar import EventData, SimplifiedEvent
 
 logger = logging.getLogger("duke_calendar_mcp")
 

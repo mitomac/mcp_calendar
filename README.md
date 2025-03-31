@@ -1,240 +1,222 @@
-# Duke Calendar MCP Server
+# Duke MCP (Multi-purpose Communication Protocol)
 
 ## Project Overview
 
-The Duke Calendar MCP (Multi-purpose Communication Protocol) Server is a FastAPI application that provides LLM-powered natural language querying for Duke University's calendar events. This project bridges the complex, messy data from Duke's Bedework calendar API with a user-friendly natural language interface, enabling users to find relevant events through simple queries like "what's happening in the arts today?" or "are there any engineering lectures this week?"
+The Duke MCP is a unified backend server that provides natural language access to various Duke University services through OpenWebUI. This system allows users to interact with university resources through simple, conversational queries rather than navigating complex APIs or web interfaces.
 
-## Challenges and Strategy
+The MCP acts as a middleware layer between Duke's existing data services and the Large Language Model (LLM) interface, providing intelligent caching, data transformation, and integration between systems.
 
-### Calendar API Challenges
+![Duke MCP Architecture](assets/architecture-diagram-with-cache.svg)
 
-The Duke Calendar API presented several significant challenges:
+## Core Components
 
-1. **Data Volume & Quality Issues**: 
-   - Thousands of groups/sponsors (many orphaned)
-   - Hundreds of categories (ad-hoc additions with minimal governance)
-   - Inconsistent data entry (especially with locations and descriptions)
-   - Long, unwieldy canonical IDs that consume LLM tokens
+The Duke MCP currently integrates three main services:
 
-2. **Complex Hierarchies**:
-   - No clear organizational structure for navigating events
-   - Difficult to map user queries to specific categories or groups
-   - Traditional filtering approaches break down with this level of complexity
+### 1. Calendar MCP
 
-3. **Time-bound Data**:
-   - Calendar data is inherently time-sensitive
-   - Need to translate natural language time expressions (e.g., "next weekend") to API parameters
+The Calendar MCP provides access to Duke's event calendar system, allowing natural language queries about campus events.
 
-### Our Solution Strategy
+**Key Features:**
+- Natural language time parsing (e.g., "this weekend", "next Monday")
+- Event filtering and categorization
+- Simplified data representation to reduce token usage
+- Intelligent handling of large result sets
 
-We adopted a two-stage approach that leverages both efficient data management and LLM capabilities:
+**Strategy:**
+Our Calendar MCP approach addresses several challenges with the Duke calendar system:
+- **Data Volume & Quality**: We handle thousands of groups/sponsors (many orphaned), hundreds of ad-hoc categories, and inconsistent data entry by implementing a streamlined data model.
+- **Complex Hierarchies**: Rather than struggling with traditional filtering approaches, we leverage the LLM's abilities to understand query intent and match relevant events.
+- **Time-bound Data**: We provide native time expression handling to convert natural language to API parameters.
 
-1. **Simplified Data Model**:
-   - Implemented a caching layer that refreshes data periodically (every hour)
-   - Created a local_id system to replace lengthy canonical IDs
-   - Defined a streamlined event representation with essential fields
-   - Removed inconsistent fields (e.g., location) from LLM decision-making
+### 2. Directory MCP
 
-2. **LLM-Optimized Query Process**:
-   - Step 1: Convert natural language time queries to ISO date ranges
-   - Step 2: Fetch simplified event data for that date range
-   - Step 3: Let the LLM analyze and select relevant events
-   - Step 4: Retrieve full details only for selected events
-   - Step 5: Present results in a user-friendly format
+The Directory MCP connects to Duke's LDAP directory service, making it easy to find contact information for Duke community members.
 
-3. **Token Efficiency**:
-   - Using local_ids instead of canonical IDs
-   - Batching multiple event IDs into a single API call
-   - Truncating lengthy descriptions
-   - Excluding irrelevant or inconsistent fields
+**Key Features:**
+- Name and NetID-based search
+- Detailed contact information retrieval
+- Efficient caching to reduce load on Duke LDAP services
+- Privacy-conscious data presentation
 
-4. **Handling Large Result Sets**:
-   - Implementing categorization and summarization strategies
-   - Grouping events by day or category when appropriate
-   - Highlighting most relevant events rather than showing all
+**Strategy:**
+The Directory MCP takes a straightforward approach to providing contact information:
+- **Data Simplification**: We extract and present only the most useful contact details.
+- **Efficient Caching**: Directory information changes infrequently, so aggressive caching reduces load on Duke systems.
+- **Name Resolution**: We optimize for the most common use case - finding someone by name - with fallbacks to NetID search.
 
-## System Architecture
+### 3. Scholars MCP
 
-The system consists of three main components:
+The Scholars MCP provides access to Duke's scholarly database, enabling queries about research, publications, and grants.
 
-### 1. MCP Server (FastAPI Backend)
+**Key Features:**
+- Integration with Directory for DUID lookup
+- Publication and grant information retrieval
+- Research profile access
+- Complex data extraction and formatting
 
-The MCP server handles data retrieval, caching, and API endpoints:
+**Strategy:**
+The Scholars MCP addresses unique challenges:
+- **Two-stage Lookup**: We handle the complexity of first finding a DUID from the Directory and then using it for Scholars queries, making this transparent to users.
+- **Data Complexity**: The Scholars API returns deeply nested, complex data structures that we intelligently parse to extract the most relevant information.
+- **Connected Presentation**: We connect biographical information with research interests, publications, and grants to create comprehensive profiles.
 
-- **Cache Management**: Refreshes event data from Duke Calendar API periodically
-- **ID Mapping**: Maintains mappings between local_ids and canonical IDs
-- **API Endpoints**:
-  - `/simplified-events`: Returns compact event data for a date range
-  - `/events-by-local-ids`: Returns full event details for selected events
+## Technical Architecture
 
-### 2. OpenWebUI Tool
+### Core Design Principles
 
-A custom tool for OpenWebUI that enables LLMs to:
+1. **Modular Components**: Each service has dedicated models, MCP implementation, and routes.
+2. **Shared Infrastructure**: All components run on the same server with consistent patterns.
+3. **Intelligent Caching**: Time-based caching reduces load on Duke's services.
+4. **Native Function Support**: Optimized for OpenWebUI's native function capabilities.
 
-- Parse natural language time expressions
-- Retrieve simplified events
-- Analyze and select relevant events
-- Fetch detailed information
-- Format responses appropriately
+### Server Structure
 
-### 3. LLM Integration (e.g., GPT-4o-mini)
-
-The LLM:
-- Interprets user queries
-- Makes decisions about which events are relevant
-- Formats the response appropriately
-- Handles large result sets with summarization strategies
-
-## Code Structure
-
-- `app/`: FastAPI application
-  - `main.py`: Application entry point
-  - `config.py`: Configuration settings
-  - `models.py`: Data models (EventData, SimplifiedEvent, etc.)
-  - `mcp.py`: CalendarMCP class for data management
-  - `routers/`: API route definitions
-    - `calendar.py`: Calendar endpoint handlers
-
-- `duke_calendar_tool.py`: OpenWebUI tool implementation
-
-## API Endpoints
-
-### GET /api/v1/calendar/simplified-events
-
-Returns simplified events for a date range.
-
-**Parameters:**
-- `start_date`: ISO format date (YYYY-MM-DD)
-- `end_date`: ISO format date (YYYY-MM-DD)
-
-**Response:**
-```json
-{
-  "events": [
-    {
-      "local_id": 1,
-      "title": "Event Title",
-      "groups": "Sponsor Group",
-      "categories": ["Category1", "Category2"],
-      "description": "Truncated description...",
-      "start_time": "2025-03-30T15:00:00Z"
-    },
-    ...
-  ],
-  "count": 5,
-  "date_range": {"start": "2025-03-30", "end": "2025-03-30"}
-}
+```
+duke-mcp/
+├── app/
+│   ├── mcp/
+│   │   ├── __init__.py
+│   │   ├── calendar.py
+│   │   ├── directory.py
+│   │   └── scholars.py
+│   ├── models/
+│   │   ├── __init__.py
+│   │   ├── calendar.py
+│   │   ├── directory.py
+│   │   └── scholars.py
+│   ├── routers/
+│   │   ├── calendar.py
+│   │   ├── directory.py
+│   │   └── scholars.py
+│   ├── __init__.py
+│   ├── config.py
+│   └── main.py
+├── duke_calendar_tool.py
+├── duke_directory_tool.py
+├── duke_scholars_tool.py
+├── requirements.txt
+├── .env
+└── README.md
 ```
 
-### POST /api/v1/calendar/events-by-local-ids
+### Component Architecture
 
-Returns full event details for specified local IDs.
+Each service component follows the same architecture pattern:
 
-**Request Body:**
-```json
-{
-  "local_ids": [1, 5, 9]
-}
-```
+1. **Models**: Define data structures for API requests and responses
+2. **MCP Implementation**: Business logic, API communication, and caching
+3. **API Routes**: FastAPI endpoints for accessing the service
+4. **OpenWebUI Tool**: Client-side tool for interacting with the MCP
 
-**Response:**
-```json
-{
-  "events": [
-    {
-      "id": "CAL-8a008ae5-8f05e4c1-018f-078609f6-00000dbcdemobedework@mysite.edu_20250330T150000Z",
-      "local_id": 1,
-      "start_timestamp": "2025-03-30T15:00:00Z",
-      "end_timestamp": "2025-03-30T16:00:00Z",
-      "summary": "Event Title",
-      "description": "Full description...",
-      "status": "CONFIRMED",
-      "sponsor": "Sponsor Group",
-      "co_sponsors": ["Co-sponsor 1", "Co-sponsor 2"],
-      "location": {
-        "address": "Location Name",
-        "link": "https://maps.duke.edu/?focus=290"
-      },
-      "contact": {
-        "name": "Contact Name",
-        "email": "contact@duke.edu",
-        "phone": "123-456-7890"
-      },
-      "categories": ["Category1", "Category2"],
-      "link": "https://calendar.duke.edu/show?fq=id:CAL-8a008ae5...",
-      "event_url": "https://example.com/event"
-    },
-    ...
-  ],
-  "count": 3
-}
-```
+### Caching Strategy
 
-## Usage Examples
+To reduce load on Duke's services and improve performance, we implement a time-based caching system:
 
-### Natural Language Queries
+- **TTL-based Cache**: Data is cached with a configurable time-to-live (default: 1 hour)
+- **Cache Keys**: Structured to allow granular invalidation
+- **Service-specific Caching**: Each MCP component implements caching tailored to its data patterns
 
-The system can handle queries like:
+## OpenWebUI Integration
 
-- "What arts events are happening this weekend?"
-- "Are there any engineering lectures tomorrow?"
-- "Show me all biomedical seminars next week"
-- "What's happening in the chapel today?"
+### Native Functions
 
-### Response Handling
+Each MCP component is paired with an OpenWebUI tool that provides:
 
-For small result sets (1-5 events), the LLM provides detailed information about each event.
+1. Specialized functions for service-specific queries
+2. Clear instructions for the LLM
+3. Error handling and fallback strategies
+4. User-friendly response formatting
 
-For larger result sets, the LLM:
-1. Categorizes and summarizes events
-2. Highlights most relevant events
-3. Groups by day or category
-4. Offers filtering suggestions
+### LLM Strategy
+
+Our approach to working with the LLM includes:
+
+- **Clear Instructions**: Well-defined usage steps for each tool
+- **Contextual Examples**: Common query patterns to guide the LLM
+- **Formatting Guidelines**: How to present different types of results
+- **Educational Prompts**: Helping the LLM understand the domain context
 
 ## Installation and Setup
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/duke-calendar-mcp.git
-   cd duke-calendar-mcp
-   ```
+### Prerequisites
 
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+- Python 3.8 or higher
+- FastAPI and Uvicorn
+- Access to Duke API services
 
-3. Set up environment variables:
-   ```
-   DUKE_CALENDAR_API_URL=https://calendar.duke.edu/events/index.json
-   DEBUG=False
-   REFERENCE_CACHE_TTL=3600
-   ```
+### Configuration
 
-4. Run the server:
-   ```bash
-   uvicorn app.main:app --reload
-   ```
+Create a `.env` file with the following variables:
 
-5. Register the OpenWebUI tool in your OpenWebUI instance
+```
+# General settings
+DEBUG=False
+REFERENCE_CACHE_TTL=3600
 
-## Future Improvements
+# Calendar API
+DUKE_CALENDAR_API_URL=https://calendar.duke.edu/events/index.json
 
-1. **Natural Language Understanding**:
-   - Add sentiment analysis to better understand user preferences
-   - Implement contextual understanding to improve follow-up queries
+# Directory API
+DUKE_DIRECTORY_API_KEY=your_directory_api_key
+DUKE_DIRECTORY_BASE_URL=https://streamer.oit.duke.edu/ldap/people
 
-2. **Data Quality**:
-   - Develop heuristics to standardize location information
-   - Implement named entity recognition to improve category mapping
+# Scholars API
+DUKE_SCHOLARS_BASE_URL=https://scholars.duke.edu/widgets/api/v0.9
+```
 
-3. **User Experience**:
-   - Create user profiles to personalize event recommendations
-   - Add relevance feedback mechanisms to improve future queries
+### Running the Server
 
-4. **Performance Optimizations**:
-   - Implement more sophisticated caching strategies
-   - Add predictive pre-fetching for common queries
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+For production, you may want to use Gunicorn with Uvicorn workers:
+
+```bash
+gunicorn app.main:app -w 4 -k uvicorn.workers.UvicornWorker -b 0.0.0.0:8000
+```
+
+### OpenWebUI Tool Setup
+
+1. Import each tool file into your OpenWebUI installation
+2. Update the `mcp_url` in each tool to point to your MCP server
+
+## API Documentation
+
+Interactive API documentation is available at `/docs` when the server is running.
+
+### Calendar Endpoints
+
+- `GET /api/v1/calendar/simplified-events`: Get events for a date range
+- `POST /api/v1/calendar/events-by-local-ids`: Get full event details by IDs
+
+### Directory Endpoints
+
+- `GET /api/v1/directory/search`: Search the directory
+- `GET /api/v1/directory/person/{ldapkey}`: Get detailed person information
+- `GET /api/v1/directory/netid/{netid}`: Search by NetID
+- `GET /api/v1/directory/name/{name}`: Search by name
+
+### Scholars Endpoints
+
+- `GET /api/v1/scholars/details`: Get scholar profile
+- `GET /api/v1/scholars/publications`: Get scholar publications
+- `GET /api/v1/scholars/grants`: Get scholar grants
+
+## Future Development
+
+### Planned Components
+
+1. **Course MCP**: Access to course information and schedules
+2. **Maps MCP**: Building locations and directions
+3. **Dining MCP**: Dining locations and menus
+
+### Roadmap
+
+1. **Enhanced Integration**: Deeper connections between components (e.g., event locations linked to maps)
+2. **Advanced Caching**: More sophisticated cache strategies with selective invalidation
+3. **Personalization**: User-specific customization and preferences
+4. **Analytics**: Usage tracking to improve service quality
 
 ## Contributing
 
@@ -242,5 +224,4 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.# mcp_calendar
-
+This project is licensed under the MIT License - see the LICENSE file for details.

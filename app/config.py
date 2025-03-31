@@ -1,13 +1,21 @@
 """
-Configuration settings for the Duke Calendar MCP Server
+Configuration settings for the Duke MCP Server
 """
 
 import os
-from pydantic import BaseModel
+from pathlib import Path
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
-# Load environment variables from .env file
-load_dotenv()
+# Get the directory where config.py is located (app directory)
+CURRENT_DIR = Path(__file__).resolve().parent
+# Go up one directory to the project root where .env should be
+BASE_DIR = CURRENT_DIR.parent
+
+# Load .env file from the project root
+load_dotenv(os.path.join(BASE_DIR, '.env'))
+
+
 
 class Settings(BaseModel):
     """Application settings"""
@@ -22,6 +30,22 @@ class Settings(BaseModel):
     DUKE_CALENDAR_API_URL: str = os.getenv(
         "DUKE_CALENDAR_API_URL", 
         "https://calendar.duke.edu/events/index.json"
+    )
+    
+    # Duke Directory API
+    DUKE_DIRECTORY_API_KEY: str = os.getenv(
+        "DUKE_DIRECTORY_API_KEY"
+    )
+    
+    DUKE_DIRECTORY_BASE_URL: str = os.getenv(
+        "DUKE_DIRECTORY_BASE_URL",
+        "https://streamer.oit.duke.edu/ldap/people"
+    )
+    
+    # Duke Scholars API - We'll implement this later
+    DUKE_SCHOLARS_BASE_URL: str = os.getenv(
+        "DUKE_SCHOLARS_BASE_URL",
+        "https://scholars.duke.edu/widgets/api/v0.9"
     )
     
     # Debug mode

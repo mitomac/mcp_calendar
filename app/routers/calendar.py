@@ -2,15 +2,15 @@
 import logging
 from fastapi import APIRouter, HTTPException
 from datetime import date, datetime
-from app.mcp import calendar_mcp
-from app.models import (
+from app.mcp.calendar import calendar_mcp
+from app.models.calendar import (
     EventsByLocalIdsRequest,
     EventsByLocalIdsResponse,
     SimplifiedEventsResponse
 )
 
 logger = logging.getLogger("duke_calendar_mcp")
-router = APIRouter(prefix="/calendar", tags=["calendar"])
+router = APIRouter(tags=["calendar"])
 
 @router.get("/simplified-events", response_model=SimplifiedEventsResponse)
 async def get_simplified_events(start_date: date, end_date: date):
