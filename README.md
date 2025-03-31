@@ -24,7 +24,7 @@ The Calendar MCP provides access to Duke's event calendar system, allowing natur
 
 **Strategy:**
 Our Calendar MCP approach addresses several challenges with the Duke calendar system:
-- **Data Volume & Quality**: We handle thousands of groups/sponsors (many orphaned), hundreds of ad-hoc categories, and inconsistent data entry by implementing a streamlined data model.
+- **Data Volume & Quality**: We handle thousands of groups/sponsors (many orphaned), hundreds of ad-hoc categories, and inconsistent data entry by implementing a streamlined data model. The data feed is so bad and a nightmare to work with.
 - **Complex Hierarchies**: Rather than struggling with traditional filtering approaches, we leverage the LLM's abilities to understand query intent and match relevant events.
 - **Time-bound Data**: We provide native time expression handling to convert natural language to API parameters.
 
